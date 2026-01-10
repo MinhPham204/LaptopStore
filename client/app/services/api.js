@@ -9,7 +9,9 @@ const API_BASE_URL =
 
 const api = axios.create({
   baseURL: API_BASE_URL,
-
+  headers: {
+    "Content-Type": "application/json",
+  },
 });
 
 // Request interceptor to add auth token
@@ -32,16 +34,11 @@ api.interceptors.response.use(
   (error) => {
     // KHÔNG redirect 401 cho các request auth, để Login/Register tự hiển thị lỗi chính xác
     const status = error.response?.status;
-    const message = error.response?.data?.message;
     const url = error.config?.url || "";
     const isAuthEndpoint =
       url.includes("/auth/login") || url.includes("/auth/register");
 
-    const isLegacyInvalidToken403 =
-      status === 403 &&
-      (message === "Invalid or expired token" || message === "Access token required");
-
-    if ((status === 401 || isLegacyInvalidToken403) && !isAuthEndpoint) {
+    if (status === 401 && !isAuthEndpoint) {
       // 1) Xoá thông tin auth phía client
       localStorage.removeItem("token");
       localStorage.removeItem("user");
@@ -63,18 +60,15 @@ api.interceptors.response.use(
 // Auth API
 export const authAPI = {
   register: (data) => api.post("/auth/register", data),
-  registerEmail: (data) => api.post("/auth/register-email", data),
   login: (data) => api.post("/auth/login", data),
   getCurrentUser: () => api.get("/auth/me"),
-  forgotPassword: (data) => api.post("/auth/forgot-password", data),
-  resetPassword: (data) => api.post("/auth/reset-password", data),
 };
 
 // Products API
 export const productsAPI = {
   getProducts: (params) => api.get("/products", { params }),
   getProductById: (id) => api.get(`/products/${id}`),
-  getRecommendations: (id) => api.get(`/products/variations/${id}/recommendations`),
+  getRecommendations: (id) => api.get(`/products/${id}/recommendations`),
 };
 
 // Cart API
@@ -91,6 +85,12 @@ export const ordersAPI = {
   createOrder: (data) => api.post("/orders", data),
   getOrders: () => api.get("/orders"),
   getOrderById: (id) => api.get(`/orders/${id}`),
+};
+
+export const notificationAPI = {
+  getNotifications: () => api.get("/notifications"),
+  markAllAsRead: () => api.put('/notifications/mark-all-read'), 
+  markAsRead: (id) => api.put(`notifications/${id}/read`),
 };
 
 // Admin API
@@ -122,13 +122,6 @@ export const adminAPI = {
   createCategory: (data) => api.post("/admin/categories", data),
   updateCategory: (id, data) => api.put(`/admin/categories/${id}`, data),
   deleteCategory: (id) => api.delete(`/admin/categories/${id}`),
-
-  // Brands
-  getAllBrands: () => api.get("/admin/brands"),
-  getBrandById: (id) => api.get(`/admin/brands/${id}`),
-  createBrand: (data) => api.post("/admin/brands", data),
-  updateBrand: (id, data) => api.put(`/admin/brands/${id}`, data),
-  deleteBrand: (id) => api.delete(`/admin/brands/${id}`),
 };
 export const geoAPI = {
   // Trả về nhẹ: chỉ lấy id + name; có thể thêm q, limit nếu BE hỗ trợ

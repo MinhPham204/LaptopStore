@@ -1,9 +1,11 @@
 const express = require("express")
+const http = require("http")
 const cors = require("cors")
 require("dotenv").config()
 
 const sequelize = require("./config/database")
 const errorHandler = require("./middleware/errorHandler")
+const { initSocket } = require("./config/socket")
 
 // Import routes
 const authRoutes = require("./routes/authRoutes")
@@ -16,11 +18,13 @@ const vnpayRoutes = require("./routes/vnpayRoutes");
 const shippingRoutes = require("./routes/shippingRoutes");
 const passport = require("./config/passport");
 const authSocialRoutes = require("./routes/authSocialRoutes");
+const notificationRoutes = require("./routes/notificationRoutes");
 
 // Import jobs
 require("./jobs/releaseReservations");
 
 const app = express()
+const server = http.createServer(app); // Tạo HTTP server từ Express app
 
 // Middleware
 app.use(cors())
@@ -38,6 +42,7 @@ app.use("/api/admin", adminRoutes)
 app.use('/api', geoRoutes);
 app.use("/api", vnpayRoutes); // hoặc app.use("/api", vnpayRoutes);
 app.use("/api", shippingRoutes);
+app.use("/api/notifications", notificationRoutes);
 
 // Health check
 app.get("/api/health", (req, res) => {
@@ -58,6 +63,8 @@ const startServer = async () => {
     await sequelize.authenticate()
     console.log("Database connection established successfully.")
 
+    initSocket(server);
+
     // NOTE: sequelize.sync({ alter: true }) rất chậm (đặc biệt DB remote như Neon)
     // Chỉ chạy khi cần bằng cách set DB_SYNC_ALTER=true trong .env
     if (String(process.env.DB_SYNC_ALTER || "").toLowerCase() === "true") {
@@ -67,7 +74,7 @@ const startServer = async () => {
       console.log("DB sync skipped (set DB_SYNC_ALTER=true to enable).")
     }
 
-    app.listen(PORT, () => {
+    server.listen(PORT, () => {
       console.log(`Server is running on port ${PORT}`)
     })
   } catch (error) {

@@ -18,6 +18,7 @@ import {
 import { useSearchSuggestions } from "../hooks/useProducts";
 import { formatPrice } from "../utils/formatters";
 import useOutsideClick from "../hooks/useOutsideClick"; // Đảm bảo bạn đã tạo hook này
+import NotificationBell from "./NotificationBell";
 
 // DỮ LIỆU MOCK (Giả lập) cho "Lịch sử" và "Xu hướng"
 const MOCK_HISTORY = [
@@ -229,10 +230,11 @@ export default function Header() {
             </form>
           </div>
 
-          <nav className="hidden md:flex items-center gap-6">
+          <nav className="hidden md:flex items-center gap-5">
             {/* ... Menu Desktop */}
             {isAuthenticated ? (
               <>
+             
                 <Link
                   to="/profile"
                   className="flex items-center gap-2 text-gray-700 hover:text-blue-600"
@@ -248,6 +250,8 @@ export default function Header() {
                   <Package className="w-5 h-5" />
                   <span>Đơn hàng</span>
                 </Link>
+
+                 <NotificationBell />
 
                 {user?.roles?.includes("admin") && (
                   <Link

@@ -1,10 +1,10 @@
-const { DataTypes } = require("sequelize")
-const sequelize = require("../config/database")
+const { DataTypes } = require("sequelize");
+const sequelize = require("../config/database");
 
 const Notification = sequelize.define(
   "Notification",
   {
-    notification_id: {
+    id: { 
       type: DataTypes.INTEGER,
       primaryKey: true,
       autoIncrement: true,
@@ -16,6 +16,7 @@ const Notification = sequelize.define(
         model: "users",
         key: "user_id",
       },
+      onDelete: "CASCADE", // Xóa user thì xóa luôn thông báo
     },
     title: {
       type: DataTypes.STRING(255),
@@ -26,23 +27,32 @@ const Notification = sequelize.define(
       allowNull: false,
     },
     type: {
-      type: DataTypes.ENUM("order", "promotion", "system", "other"),
-      defaultValue: "other",
+      type: DataTypes.STRING(50), 
+      defaultValue: "system", 
     },
-    is_read: {
-      type: DataTypes.BOOLEAN,
-      defaultValue: false,
+    related_entity_type: {
+      type: DataTypes.STRING(50),
+      allowNull: true,
+    },
+    related_entity_id: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+    },
+    read_at: {
+      type: DataTypes.DATE,
+      allowNull: true,
     },
     link: {
       type: DataTypes.STRING(255),
+      allowNull: true,
     },
   },
   {
     tableName: "notifications",
     timestamps: true,
     createdAt: "created_at",
-    updatedAt: false,
-  },
-)
+    updatedAt: "updated_at", // Nên bật updatedAt để theo dõi thay đổi
+  }
+);
 
-module.exports = Notification
+module.exports = Notification;

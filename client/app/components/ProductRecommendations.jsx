@@ -113,16 +113,16 @@ function RecoCard({ item }) {
 
           <div className="flex items-center gap-1 mb-2">
             <div className="flex">
-              {[...Array(5)].map((_, i) => (
+              {/* {[...Array(5)].map((_, i) => (
                 <Star
                   key={i}
                   className={`w-4 h-4 ${
                     i < Math.floor(average_rating) ? "fill-yellow-400 text-yellow-400" : "text-gray-300"
                   }`}
                 />
-              ))}
+              ))} */}
             </div>
-            <span className="text-sm text-gray-600">({review_count})</span>
+            {/* <span className="text-sm text-gray-600">({review_count})</span> */}
           </div>
 
           <div className="mb-3">

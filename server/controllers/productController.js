@@ -1,4 +1,4 @@
-// server/controllers/productController.js
+const notificationService = require("../services/notificationService");
 const {
   sequelize,
   Product,
@@ -12,6 +12,7 @@ const {
   Question,
   Answer,
   User,
+  Role,
 } = require("../models");
 const { Op, Sequelize } = require("sequelize");
 const axios = require("axios");
@@ -233,7 +234,7 @@ exports.getProducts = async (req, res, next) => {
   try {
     // Ép kiểu và giá trị mặc định cho phân trang và sắp xếp
     const page = Math.max(1, Number.parseInt(req.query.page ?? 1));
-    const limit = Math.max(1, Number.parseInt(req.query.limit ?? 12));
+    const limit = Math.max(1, Number.parseInt(req.query.limit ?? 12)); 
     const offset = (page - 1) * limit;
 
     // Whitelist sort/order để chống SQL Injection
@@ -266,7 +267,7 @@ exports.getProducts = async (req, res, next) => {
     // ĐỌC THAM SỐ TÌM KIẾM TỪ HEADER (search query)
     const search = (req.query.search || "").trim();
 
-    const where = {};
+    const where = { is_active: true };
 
     // Lọc theo Danh mục
     if (categoryIds.length === 1) where.category_id = categoryIds[0];
@@ -306,7 +307,7 @@ exports.getProducts = async (req, res, next) => {
         {
           model: ProductVariation,
           as: "variations",
-          attributes: ["variation_id", "price", "stock_quantity", "is_primary", "processor", "ram", "storage", "graphics_card", "screen_size"],
+          attributes: ["variation_id", "price", "stock_quantity"],
         },
         {
           model: ProductImage,
@@ -780,6 +781,110 @@ exports.getBrands = async (req, res, next) => {
 
 // Tạo câu hỏi
 // === TẠO CÂU HỎI (SỬA: dùng req.user.user_id) ===
+// exports.createQuestion = async (req, res, next) => {
+//   try {
+//     const { id } = req.params; // product_id hoặc slug
+//     const { question_text, parent_question_id } = req.body;
+
+//     if (!question_text || !question_text.trim()) {
+//       return res.status(400).json({ message: "question_text is required" });
+//     }
+
+//     const whereKey = /^\d+$/.test(String(id))
+//       ? { product_id: id }
+//       : { slug: id };
+//     const product = await Product.findOne({
+//       where: whereKey,
+//       attributes: ["product_id", "product_name"], // Lấy thêm product_name để dùng trong thông báo
+//     });
+//     if (!product) return res.status(404).json({ message: "Product not found" });
+
+//     let parent = null;
+//     if (parent_question_id) {
+//       parent = await Question.findByPk(parent_question_id, {
+//         attributes: ["question_id", "product_id", "parent_question_id"],
+//       });
+//       if (!parent) {
+//         return res.status(404).json({ message: "Parent question not found" });
+//       }
+//       // parent phải là câu gốc
+//       if (parent.parent_question_id) {
+//         return res
+//           .status(400)
+//           .json({ message: "Only one follow-up level is allowed" });
+//       }
+//       // cùng sản phẩm
+//       if (parent.product_id !== product.product_id) {
+//         return res
+//           .status(400)
+//           .json({ message: "Parent question does not belong to this product" });
+//       }
+//       // parent đã được trả lời bởi admin?
+//       const answered = await Answer.findOne({
+//         where: { question_id: parent.question_id },
+//       });
+//       if (!answered) {
+//         return res
+//           .status(400)
+//           .json({ message: "Parent must be answered before follow-up" });
+//       }
+//     }
+
+//     // Tạo mới
+//     const q = await Question.create({
+//       product_id: product.product_id,
+//       user_id: req.user.user_id,
+//       question_text: question_text.trim(),
+//       is_answered: false,
+//       parent_question_id: parent_question_id || null,
+//     });
+
+//     // Trả về kèm user
+//     const withUser = await Question.findByPk(q.question_id, {
+//       attributes: [
+//         "question_id",
+//         "question_text",
+//         "is_answered",
+//         "created_at",
+//         "parent_question_id",
+//       ],
+//       include: [
+//         {
+//           model: User,
+//           as: "user",
+//           attributes: ["user_id", "username", "full_name"],
+//         },
+//       ],
+//     });
+
+//     // --- TÍCH HỢP THÔNG BÁO ---
+//     const notifMessage = parent_question_id 
+//       ? `Khách hàng phản hồi câu trả lời tại sản phẩm: ${product.product_name}`
+//       : `Có câu hỏi mới về sản phẩm: ${product.product_name}`;
+
+//     // Không cần await để không chặn response
+//     notificationService.createNotification({
+//       userId: null, // Gửi cho Admin
+//       title: parent_question_id ? "Phản hồi mới 💬" : "Câu hỏi mới ❓",
+//       message: notifMessage,
+//       type: "new_question",
+//       relatedType: "product",
+//       relatedId: product.product_id
+//     });
+//     // ---------------------------
+
+//     return res.status(201).json({ question: withUser });
+//   } catch (err) {
+//     // Nếu vi phạm unique (đã có follow-up cho parent), báo 409
+//     if (err?.name === "SequelizeUniqueConstraintError") {
+//       return res
+//         .status(409)
+//         .json({ message: "This question already has a follow-up" });
+//     }
+//     next(err);
+//   }
+// };
+
 exports.createQuestion = async (req, res, next) => {
   try {
     const { id } = req.params; // product_id hoặc slug
@@ -789,61 +894,56 @@ exports.createQuestion = async (req, res, next) => {
       return res.status(400).json({ message: "question_text is required" });
     }
 
+    // 1. Tìm Product
     const whereKey = /^\d+$/.test(String(id))
       ? { product_id: id }
       : { slug: id };
+      
     const product = await Product.findOne({
       where: whereKey,
-      attributes: ["product_id"],
+      attributes: ["product_id", "product_name"],
     });
+
     if (!product) return res.status(404).json({ message: "Product not found" });
 
+    // 2. Logic Parent Question (nếu là reply)
     let parent = null;
     if (parent_question_id) {
       parent = await Question.findByPk(parent_question_id, {
         attributes: ["question_id", "product_id", "parent_question_id"],
       });
+      
       if (!parent) {
         return res.status(404).json({ message: "Parent question not found" });
       }
-      // parent phải là câu gốc
+      // Chỉ cho phép 1 cấp follow-up
       if (parent.parent_question_id) {
-        return res
-          .status(400)
-          .json({ message: "Only one follow-up level is allowed" });
+        return res.status(400).json({ message: "Only one follow-up level is allowed" });
       }
-      // cùng sản phẩm
+      // Cùng sản phẩm
       if (parent.product_id !== product.product_id) {
-        return res
-          .status(400)
-          .json({ message: "Parent question does not belong to this product" });
+        return res.status(400).json({ message: "Parent question does not belong to this product" });
       }
-      // parent đã được trả lời bởi admin?
+      // Parent phải đã được trả lời
       const answered = await Answer.findOne({
         where: { question_id: parent.question_id },
       });
       if (!answered) {
-        return res
-          .status(400)
-          .json({ message: "Parent must be answered before follow-up" });
+        return res.status(400).json({ message: "Parent must be answered before follow-up" });
       }
-      // (tuỳ chọn) chỉ chủ sở hữu parent mới được follow-up
-      // const owner = await Question.findByPk(parent_question_id, { attributes: ["user_id"] });
-      // if (owner && owner.user_id !== req.user.user_id) {
-      //   return res.status(403).json({ message: "Only the original asker can follow up" });
-      // }
     }
 
-    // Tạo mới
+    // 3. Tạo Question
+    // SỬA: Dùng đúng req.user.user_id như code cũ yêu cầu (đã qua middleware auth)
     const q = await Question.create({
       product_id: product.product_id,
-      user_id: req.user.user_id,
+      user_id: req.user.user_id, 
       question_text: question_text.trim(),
       is_answered: false,
       parent_question_id: parent_question_id || null,
     });
 
-    // Trả về kèm user
+    // 4. Lấy data trả về (kèm User info)
     const withUser = await Question.findByPk(q.question_id, {
       attributes: [
         "question_id",
@@ -861,13 +961,48 @@ exports.createQuestion = async (req, res, next) => {
       ],
     });
 
+    // 5. GỬI THÔNG BÁO CHO ADMIN/STAFF
+    // Logic: Tìm tất cả Admin/Staff và bắn thông báo cho từng người
+    try {
+        const notifTitle = parent_question_id ? "Phản hồi mới 💬" : "Câu hỏi mới ❓";
+        const notifMessage = parent_question_id 
+          ? `Khách hàng phản hồi câu trả lời tại sản phẩm: ${product.product_name}`
+          : `Có câu hỏi mới về sản phẩm: ${product.product_name}`;
+
+        // Tìm list users có role admin hoặc staff
+        const staffUsers = await User.findAll({
+            attributes: ['user_id'],
+            include: [{
+                model: Role,
+                as: 'Roles',
+                where: { role_name: ['admin', 'staff'] },
+                required: true
+            }]
+        });
+
+        if (staffUsers.length > 0) {
+            const notiPromises = staffUsers.map(staff => {
+                return notificationService.createNotification({
+                    userId: staff.user_id, // Gửi đích danh ID để socket hoạt động chuẩn
+                    title: notifTitle,
+                    message: notifMessage,
+                    type: "new_question",
+                    relatedType: "product",
+                    relatedId: product.product_id
+                });
+            });
+
+            await Promise.all(notiPromises);
+        }
+    } catch (notifError) {
+        console.error(">>> [DEBUG] Lỗi gửi thông báo:", notifError);
+    }
+
     return res.status(201).json({ question: withUser });
+
   } catch (err) {
-    // Nếu vi phạm unique (đã có follow-up cho parent), báo 409
     if (err?.name === "SequelizeUniqueConstraintError") {
-      return res
-        .status(409)
-        .json({ message: "This question already has a follow-up" });
+       return res.status(409).json({ message: "This question already has a follow-up" });
     }
     next(err);
   }
@@ -1031,6 +1166,19 @@ exports.createAnswer = async (req, res, next) => {
       ],
     });
 
+    const question = await Question.findByPk(req.params.question_id);
+  
+    if (question.user_id) { // Chỉ gửi nếu người hỏi là thành viên
+      notificationService.createNotification({
+        userId: question.user_id,
+        title: "Phản hồi mới",
+        message: "Admin đã trả lời câu hỏi của bạn.",
+        type: "new_answer",
+        relatedType: "product",
+        relatedId: question.product_id
+      });
+   }
+
     return res.status(201).json({ answer: withUser });
   } catch (err) {
     if (err?.name === "SequelizeUniqueConstraintError") {
@@ -1041,6 +1189,75 @@ exports.createAnswer = async (req, res, next) => {
     next(err);
   }
 };
+
+// exports.createAnswer = async (req, res, next) => {
+//   console.log(">>> [DEBUG] Bắt đầu createAnswer"); // Log 1
+//   try {
+//     const { question_id } = req.params;
+//     const { answer_text } = req.body;
+
+//     if (!answer_text || !answer_text.trim()) {
+//       return res.status(400).json({ message: "answer_text is required" });
+//     }
+
+//     // role check
+//     const roles = (req.user.Roles || []).map((r) => r.role_name);
+//     const isStaff = roles.includes("admin") || roles.includes("staff");
+//     if (!isStaff) {
+//       return res.status(403).json({ message: "Only staff can answer" });
+//     }
+
+//     const q = await Question.findByPk(question_id);
+//     if (!q) return res.status(404).json({ message: "Question not found" });
+
+//     // Tạo câu trả lời
+//     const a = await Answer.create({
+//       question_id: q.question_id,
+//       user_id: req.user.user_id,
+//       answer_text: answer_text.trim(),
+//     });
+//     console.log(">>> [DEBUG] Đã tạo Answer thành công, ID:", a.answer_id); // Log 2
+
+//     // Cập nhật trạng thái câu hỏi
+//     if (!q.is_answered) {
+//       await q.update({ is_answered: true });
+//     }
+
+//     // --- LOGIC GỬI THÔNG BÁO ---
+//     console.log(">>> [DEBUG] Bắt đầu gửi thông báo..."); // Log 3
+//     try {
+//         // Lấy lại thông tin câu hỏi để chắc chắn có user_id
+//         const question = await Question.findByPk(question_id);
+        
+//         console.log(">>> [DEBUG] Question User ID:", question?.user_id); // Log 4
+
+//         if (question && question.user_id) {
+//              console.log(">>> [DEBUG] Gọi notificationService..."); // Log 5
+             
+//              await notificationService.createNotification({
+//                 userId: question.user_id,
+//                 title: "Phản hồi mới 💬",
+//                 message: "Admin đã trả lời câu hỏi của bạn.",
+//                 type: "new_answer",
+//                 relatedType: "product",
+//                 relatedId: question.product_id
+//             });
+//             console.log(">>> [DEBUG] Đã gọi service thành công!"); // Log 6
+//         } else {
+//             console.log(">>> [DEBUG] Không gửi thông báo: Question không có user_id (Khách vãng lai?)");
+//         }
+//     } catch (notifError) {
+//         console.error(">>> [DEBUG] LỖI GỬI THÔNG BÁO:", notifError);
+//     }
+//     // ---------------------------
+
+//     return res.status(201).json({ answer: a }); 
+
+//   } catch (err) {
+//     console.error(">>> [DEBUG] Lỗi createAnswer:", err);
+//     next(err);
+//   }
+// };
 
 // === DANH SÁCH CÂU HỎI CỦA 1 PRODUCT (tuỳ bạn dùng hay không; FE bạn đang lấy qua getProductDetail rồi) ===
 exports.getProductQuestions = async (req, res, next) => {
