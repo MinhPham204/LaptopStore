@@ -58,7 +58,7 @@ The system is designed to serve two main user groups with distinct roles:
 
 ### Recommendation Service (AI Core)
 * **Language:** Python 3
-* **Algorithm:** Custom Weighted KNN (Performance scoring based on CPU 40%, GPU 35%, RAM 15%, Storage 10%)
+* **Algorithm:** Custom Weighted KNN 
 * **Libraries:** NumPy, Pandas, Scikit-learn, Flask
 
 ---
