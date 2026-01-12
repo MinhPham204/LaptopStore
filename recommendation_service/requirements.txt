@@ -11,4 +11,3 @@ SQLAlchemy>=2.0
 
 
 
-# Chạy lệnh pip install -r requirements.txt 
