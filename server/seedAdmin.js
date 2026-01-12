@@ -34,7 +34,7 @@ async function seedAdmin() {
         }
 
         // 3. Tạo Admin User mới
-        // NOTE: Mật khẩu sẽ được băm tự động nhờ Sequelize hooks trong model User.js
+        // Mật khẩu sẽ được băm tự động nhờ Sequelize hooks trong model User.js
         adminUser = await User.create({
             username: ADMIN_USERNAME,
             email: ADMIN_EMAIL,

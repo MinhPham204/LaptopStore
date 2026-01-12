@@ -69,7 +69,7 @@ export default function RegisterPage() {
   };
 
   // ======= SOCIAL AUTH (Google/Facebook) =======
-  const BACKEND = import.meta.env.VITE_BACKEND_URL || "http://localhost:5000";
+  const BACKEND = import.meta.env.VITE_API_URL || "http://localhost:5000";
 
   // Nhận token từ callback OAuth và hoàn tất đăng nhập
   useEffect(() => {

@@ -12,7 +12,7 @@ export default function LoginPage() {
   const login = useLogin();
   const forgotPassword = useForgotPassword();
   const resetPassword = useResetPassword();
-  const BACKEND = import.meta.env.VITE_BACKEND_URL || "http://localhost:5000";
+  const BACKEND = import.meta.env.VITE_API_URL || "http://localhost:5000";
 
   const mode = (searchParams.get("mode") || "").toLowerCase();
   const resetToken = searchParams.get("token") || "";
