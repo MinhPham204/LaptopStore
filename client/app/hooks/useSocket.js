@@ -7,13 +7,10 @@ import { toast } from "react-toastify";
 const SOCKET_URL = import.meta.env.VITE_API_URL?.replace('/api', '') || "http://localhost:5000";
 
 export const useSocket = () => {
-  // SỬA ĐỔI: Dùng useState thay vì useRef để trigger re-render khi có socket
   const [socket, setSocket] = useState(null);
   const { user, isAuthenticated } = useSelector((state) => state.auth);
 
-  // 1. Khởi tạo kết nối (Chạy 1 lần khi mount)
   useEffect(() => {
-    console.log("🔌 [Socket Client] Đang khởi tạo kết nối tới:", SOCKET_URL);
     
     const newSocket = io(SOCKET_URL, {
       transports: ["websocket"], // Ưu tiên websocket
@@ -22,11 +19,11 @@ export const useSocket = () => {
 
     // Debug sự kiện kết nối
     newSocket.on("connect", () => {
-      console.log("✅ [Socket Client] Đã kết nối thành công! ID:", newSocket.id);
+      console.log("[Socket Client] Đã kết nối thành công! ID:", newSocket.id);
     });
 
     newSocket.on("connect_error", (err) => {
-      console.error("❌ [Socket Client] Lỗi kết nối:", err.message);
+      console.error("[Socket Client] Lỗi kết nối:", err.message);
     });
 
     // Lưu instance vào state
@@ -34,7 +31,7 @@ export const useSocket = () => {
 
     // Cleanup khi unmount
     return () => {
-      console.log("🔌 [Socket Client] Ngắt kết nối...");
+      console.log("[Socket Client] Ngắt kết nối...");
       newSocket.disconnect();
     };
   }, []); 
@@ -43,7 +40,7 @@ export const useSocket = () => {
   useEffect(() => {
     if (!socket || !isAuthenticated || !user) return;
 
-    console.log("👤 [Socket Client] Tham gia phòng cho User:", user.user_id);
+    console.log("[Socket Client] Tham gia phòng cho User:", user.user_id);
 
     // --- JOIN ROOM ---
     socket.emit("join_user_room", user.user_id);
@@ -53,14 +50,14 @@ export const useSocket = () => {
                            (user.Roles && user.Roles.some(r => ["admin", "staff"].includes(r.role_name)));
 
     if (isAdminOrStaff) {
-      console.log("🛡️ [Socket Client] Tham gia phòng Admin");
+      console.log("[Socket Client] Tham gia phòng Admin");
       socket.emit("join_admin_room");
     }
 
     // --- ĐỊNH NGHĨA HANDLERS (Để dễ cleanup) ---
     
     const handleNewOrder = (data) => {
-      console.log("🔔 [Socket Client] Nhận sự kiện 'new_order':", data);
+      console.log("[Socket Client] Nhận sự kiện 'new_order':", data);
       toast.info(`💰 ${data.message}`, {
         position: "top-right",
         autoClose: 5000,
@@ -69,37 +66,37 @@ export const useSocket = () => {
     };
 
     const handleNewQuestion = (data) => {
-      console.log("🔔 [Socket Client] Nhận sự kiện 'new_question':", data);
-      toast.warning(`❓ ${data.message}`, {
+      console.log("[Socket Client] Nhận sự kiện 'new_question':", data);
+      toast.warning(`${data.message}`, {
         onClick: () => window.location.href = `/products/${data.relatedId}`
       });
     };
 
     const handleNewAnswer = (data) => {
-      console.log("🔔 [Socket Client] Nhận sự kiện 'new_answer':", data);
-      toast.info(`💬 ${data.message}`, {
+      console.log("[Socket Client] Nhận sự kiện 'new_answer':", data);
+      toast.info(`${data.message}`, {
         onClick: () => window.location.href = `/products/${data.relatedId}`
       });
     };
 
     const handleOrderStatus = (data) => {
-      console.log("🔔 [Socket Client] Nhận sự kiện 'order_status_updated':", data);
-      toast.success(`📦 ${data.message}`, {
+      console.log("[Socket Client] Nhận sự kiện 'order_status_updated':", data);
+      toast.success(`${data.message}`, {
         onClick: () => window.location.href = `/orders/${data.relatedId}`
       });
     };
 
     const handlePaymentSuccess = (data) => {
-      console.log("🔔 [Socket Client] Nhận sự kiện 'payment_success':", data);
-      toast.success(`✅ ${data.message}`, {
+      console.log("[Socket Client] Nhận sự kiện 'payment_success':", data);
+      toast.success(`${data.message}`, {
         autoClose: 7000,
         onClick: () => window.location.href = `/orders/${data.relatedId}`
       });
     };
     
     const handlePaymentReceived = (data) => {
-        console.log("🔔 [Socket Client] Nhận sự kiện 'payment_received':", data);
-        toast.success(`💸 ${data.message}`);
+        console.log("[Socket Client] Nhận sự kiện 'payment_received':", data);
+        toast.success(`${data.message}`);
     };
 
     // --- ĐĂNG KÝ LẮNG NGHE ---
