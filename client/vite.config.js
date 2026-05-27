@@ -7,7 +7,7 @@ export default defineConfig({
   test: {
     environment: "jsdom",
     setupFiles: ["./vitest.setup.js"],
-    include: ["app/**/*.{test,spec}.{js,jsx}"],
+    include: ["app/**/*.{test,spec}.{js,jsx}", "__tests__/**/*.test.{js,jsx}"],
   },
   resolve: {
     alias: {
