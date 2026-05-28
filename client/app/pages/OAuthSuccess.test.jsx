@@ -77,11 +77,26 @@ describe("OAuthSuccess", () => {
     )
   })
 
-  // FR: AC4 — pendingCheckout hợp lệ → checkout + xóa key
-  it("navigates to checkout with state when pendingCheckout is valid JSON", async () => {
+  // FR: §6.2 / §4 — pendingCheckout buy_now schema (mode + items) → checkout + xóa key
+  it("navigates to checkout with buy_now pending state (mode + items) after OAuth (§6.2)", async () => {
     mockSearchParams = new URLSearchParams("token=session-jwt")
     mockApiGet.mockResolvedValue({ data: { user: mockUser } })
-    const checkoutState = { variation_id: 10, quantity: 2 }
+    const checkoutState = {
+      mode: "buy_now",
+      items: [
+        {
+          variation_id: 10,
+          quantity: 2,
+          product: {
+            product_name: "Laptop OAuth",
+            thumbnail_url: "/thumb.png",
+            variation: { price: 20_000_000 },
+          },
+        },
+      ],
+      redirectAfterLogin: true,
+      timestamp: Date.now(),
+    }
     localStorage.setItem("pendingCheckout", JSON.stringify(checkoutState))
 
     renderPage()
