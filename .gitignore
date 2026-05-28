@@ -57,6 +57,12 @@ logs/
 coverage/
 .cache/
 
+# === JMeter load test artifacts ===
+jmeter/results/*.jtl
+jmeter/report/**
+!jmeter/report/.gitkeep
+!jmeter/results/.gitkeep
+
 # === Others you may have ===
 .vscode/
 .idea/
